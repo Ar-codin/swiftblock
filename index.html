@@ -40,14 +40,6 @@
             box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4);
         }
 
-        .btn-dpad {
-            box-shadow: 0 3px 0 #334155, inset 0 2px 2px rgba(255, 255, 255, 0.3);
-        }
-        .btn-dpad:active {
-            transform: translateY(2px);
-            box-shadow: 0 1px 0 #1e293b;
-        }
-
         /* Console Casing Outer Shadow */
         .console-casing {
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 6px #cbd5e1, inset 0 4px 8px rgba(255, 255, 255, 0.9);
@@ -203,57 +195,36 @@
                 <!-- TOP SECTION ON MOBILE / LEFT PANEL ON DESKTOP -->
                 <div class="lg:col-span-5 h-auto lg:h-full flex flex-col justify-between gap-2 shrink-0">
                     
-                    <div class="grid grid-cols-12 gap-2 items-center bg-slate-200/80 p-2 sm:p-3 rounded-2xl border-2 border-slate-300">
+                    <div class="w-full bg-slate-200/80 p-2 sm:p-3 rounded-2xl border-2 border-slate-300">
                         
-                        <!-- LCD DIGITAL DISPLAY SCREEN -->
-                        <div class="col-span-7 bg-slate-950 border-4 border-slate-800 rounded-xl p-2 shadow-inner relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                        <!-- EXPANDED LCD DIGITAL DISPLAY SCREEN -->
+                        <div class="w-full bg-slate-950 border-4 border-slate-800 rounded-xl p-3 shadow-inner relative overflow-hidden flex flex-col justify-between min-h-[140px] sm:min-h-[160px]">
                             <div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:4px_4px] opacity-40 pointer-events-none"></div>
 
                             <div class="relative z-10">
-                                <div class="flex justify-between items-center text-lime-400 font-lcd text-base sm:text-lg border-b border-slate-800 pb-0.5">
-                                    <span>LVL <span id="lcdLevel" class="text-white">01</span><span class="text-[10px] text-slate-500">/50</span></span>
-                                    <span id="lcdDiff" class="text-[9px] font-tech text-lime-500 bg-slate-900 px-1.5 py-0.2 rounded uppercase">EASY</span>
+                                <div class="flex justify-between items-center text-lime-400 font-lcd text-lg sm:text-2xl border-b border-slate-800 pb-1">
+                                    <span>LVL <span id="lcdLevel" class="text-white">01</span><span class="text-xs sm:text-sm text-slate-500">/50</span></span>
+                                    <span id="lcdDiff" class="text-xs sm:text-sm font-tech text-lime-500 bg-slate-900 px-2 py-0.5 rounded uppercase">EASY</span>
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-1 text-lime-400 font-lcd text-sm sm:text-base my-1">
-                                    <div class="bg-slate-900/80 p-1 rounded border border-slate-800">
-                                        <div class="text-[8px] font-tech text-slate-400">TIME</div>
-                                        <span id="lcdTimer" class="text-white">00:00</span>
+                                <div class="grid grid-cols-2 gap-2 text-lime-400 font-lcd text-base sm:text-xl my-2">
+                                    <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                        <div class="text-[9px] sm:text-xs font-tech text-slate-400">TIME</div>
+                                        <span id="lcdTimer" class="text-white text-lg sm:text-2xl">00:00</span>
                                     </div>
-                                    <div class="bg-slate-900/80 p-1 rounded border border-slate-800">
-                                        <div class="text-[8px] font-tech text-slate-400">MOVES</div>
-                                        <span id="lcdMoves" class="text-white">0</span><span id="lcdParMoves" class="text-[10px] text-slate-500">/15</span>
+                                    <div class="bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                                        <div class="text-[9px] sm:text-xs font-tech text-slate-400">MOVES</div>
+                                        <span id="lcdMoves" class="text-white text-lg sm:text-2xl">0</span><span id="lcdParMoves" class="text-xs sm:text-sm text-slate-500">/15</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="relative z-10 flex justify-between items-center pt-1 border-t border-slate-800 text-[10px] font-tech">
-                                <span id="lcdStatusText" class="text-emerald-400 font-bold truncate">SLIDE TO EXIT</span>
-                                <div id="lcdStars" class="flex gap-0.5 text-amber-400 text-[10px]">
+                            <div class="relative z-10 flex justify-between items-center pt-1.5 border-t border-slate-800 font-tech">
+                                <span id="lcdStatusText" class="text-emerald-400 font-bold text-xs sm:text-sm truncate">SLIDE TO EXIT</span>
+                                <div id="lcdStars" class="flex gap-1 text-amber-400 text-xs sm:text-sm">
                                     <i class="fa-regular fa-star"></i>
                                     <i class="fa-regular fa-star"></i>
                                     <i class="fa-regular fa-star"></i>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- COMPACT PHYSICAL D-PAD -->
-                        <div class="col-span-5 flex items-center justify-center">
-                            <div class="relative w-24 h-24 sm:w-28 sm:h-28 bg-slate-300 rounded-full p-1 border-2 border-slate-400 shadow-md flex items-center justify-center">
-                                <button id="dpadUp" class="btn-dpad absolute top-1 bg-slate-700 hover:bg-slate-600 text-amber-400 w-8 h-8 rounded-t-lg flex items-center justify-center text-xs">
-                                    <i class="fa-solid fa-caret-up"></i>
-                                </button>
-                                <button id="dpadDown" class="btn-dpad absolute bottom-1 bg-slate-700 hover:bg-slate-600 text-cyan-400 w-8 h-8 rounded-b-lg flex items-center justify-center text-xs">
-                                    <i class="fa-solid fa-caret-down"></i>
-                                </button>
-                                <button id="dpadLeft" class="btn-dpad absolute left-1 bg-slate-700 hover:bg-slate-600 text-rose-400 w-8 h-8 rounded-l-lg flex items-center justify-center text-xs">
-                                    <i class="fa-solid fa-caret-left"></i>
-                                </button>
-                                <button id="dpadRight" class="btn-dpad absolute right-1 bg-slate-700 hover:bg-slate-600 text-lime-400 w-8 h-8 rounded-r-lg flex items-center justify-center text-xs">
-                                    <i class="fa-solid fa-caret-right"></i>
-                                </button>
-                                <div class="w-6 h-6 bg-slate-400 rounded-full border border-slate-500 shadow-inner flex items-center justify-center">
-                                    <div class="w-1.5 h-1.5 rounded-full bg-slate-500"></div>
                                 </div>
                             </div>
                         </div>
@@ -262,16 +233,16 @@
 
                     <!-- CONTROL TOOLBAR BUTTONS -->
                     <div class="grid grid-cols-4 gap-1.5 mt-1">
-                        <button id="btnLevels" title="Select Stage" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                        <button id="btnLevels" title="Select Stage" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                             <i class="fa-solid fa-list-check"></i> <span class="hidden sm:inline">STAGES</span>
                         </button>
-                        <button id="btnHint" title="Get Hint" class="btn-3d bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                        <button id="btnHint" title="Get Hint" class="btn-3d bg-amber-500 hover:bg-amber-400 text-slate-950 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                             <i class="fa-solid fa-lightbulb"></i> <span class="hidden sm:inline">HINT</span>
                         </button>
-                        <button id="btnReset" title="Reset Level" class="btn-3d bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                        <button id="btnReset" title="Reset Level" class="btn-3d bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                             <i class="fa-solid fa-rotate-left"></i> <span class="hidden sm:inline">RESET</span>
                         </button>
-                        <button id="btnModeToggle" title="Toggle Ice / Klotski Mode" class="btn-3d bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                        <button id="btnModeToggle" title="Toggle Ice / Klotski Mode" class="btn-3d bg-teal-600 hover:bg-teal-500 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                             <i class="fa-solid fa-snowflake"></i> <span id="slideModeLabel">ICE</span>
                         </button>
                     </div>
@@ -575,11 +546,10 @@
                 this.init();
                 const now = this.ctx.currentTime;
 
-                // First tone (low ping)
                 const osc1 = this.ctx.createOscillator();
                 const gain1 = this.ctx.createGain();
                 osc1.type = 'square';
-                osc1.frequency.setValueAtTime(1046.50, now); // C6
+                osc1.frequency.setValueAtTime(1046.50, now);
                 gain1.gain.setValueAtTime(0.15, now);
                 gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
                 osc1.connect(gain1);
@@ -587,11 +557,10 @@
                 osc1.start(now);
                 osc1.stop(now + 0.1);
 
-                // High chime tone (classic GB boot chime)
                 const osc2 = this.ctx.createOscillator();
                 const gain2 = this.ctx.createGain();
                 osc2.type = 'square';
-                osc2.frequency.setValueAtTime(2093.00, now + 0.22); // C7
+                osc2.frequency.setValueAtTime(2093.00, now + 0.22);
                 gain2.gain.setValueAtTime(0.2, now + 0.22);
                 gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
                 osc2.connect(gain2);
@@ -647,7 +616,6 @@
                 this.init();
                 const now = this.ctx.currentTime;
 
-                // Create 8-bit Noise Buffer
                 const bufferSize = this.ctx.sampleRate * 0.05;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -1256,11 +1224,6 @@
             audio.playClick();
             calculateHint();
         });
-
-        document.getElementById('dpadUp').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', 0, -1));
-        document.getElementById('dpadDown').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', 0, 1));
-        document.getElementById('dpadLeft').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', -1, 0));
-        document.getElementById('dpadRight').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', 1, 0));
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowUp' || e.key === 'w') moveBlock(selectedBlockId || 'hero', 0, -1);
