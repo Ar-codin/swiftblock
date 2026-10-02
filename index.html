@@ -58,11 +58,19 @@
             background-color: #f1f5f9;
         }
 
-        /* Smooth CSS Block Movement */
+        /* Smooth CSS Block Movement & Dragging Class */
         .game-block {
-            transition: transform 0.15s ease-out, left 0.15s ease-out, top 0.15s ease-out;
+            transition: left 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.18s ease;
             will-change: left, top, transform;
             touch-action: none;
+        }
+
+        .game-block.is-dragging {
+            transition: none !important;
+            z-index: 50 !important;
+            opacity: 0.92;
+            filter: brightness(1.08);
+            box-shadow: 0 15px 25px rgba(0,0,0,0.4), inset 0 2px 2px rgba(255,255,255,0.6) !important;
         }
 
         /* Block Color Themes matching Reference Console */
@@ -136,7 +144,7 @@
                     </button>
                     <div id="modeBadge" class="bg-slate-200 text-slate-700 text-[10px] sm:text-xs font-bold px-2 py-1 rounded-lg border border-slate-300 flex items-center gap-1">
                         <i class="fa-solid fa-sliders text-lime-600"></i>
-                        <span id="modeText">Klotski</span>
+                        <span id="modeText">Realtime</span>
                     </div>
                 </div>
             </div>
@@ -172,7 +180,7 @@
                             </div>
 
                             <div class="relative z-10 flex justify-between items-center pt-1 border-t border-slate-800 text-[10px] font-tech">
-                                <span id="lcdStatusText" class="text-emerald-400 font-bold truncate">SLIDE TO EXIT</span>
+                                <span id="lcdStatusText" class="text-emerald-400 font-bold truncate">DRAG & RELEASE</span>
                                 <div id="lcdStars" class="flex gap-0.5 text-amber-400 text-[10px]">
                                     <i class="fa-regular fa-star"></i>
                                     <i class="fa-regular fa-star"></i>
@@ -215,8 +223,8 @@
                         <button id="btnReset" title="Reset Level" class="btn-3d bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
                             <i class="fa-solid fa-rotate-left"></i> <span class="hidden sm:inline">RESET</span>
                         </button>
-                        <button id="btnModeToggle" title="Toggle Ice / Klotski Mode" class="btn-3d bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-snowflake"></i> <span id="slideModeLabel">ICE</span>
+                        <button id="btnModeToggle" title="Toggle Mode" class="btn-3d bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-hand-pointer"></i> <span id="slideModeLabel">DRAG</span>
                         </button>
                     </div>
 
@@ -369,14 +377,11 @@
             console.warn("Firebase offline/fallback mode active.");
         }
 
-        // 50 Solvable Stage Generator
         function generate50Levels() {
             const list = [];
             for (let i = 1; i <= 50; i++) {
                 let diff = "EASY";
                 let par = 14 + i;
-                let isIce = i % 4 === 0;
-
                 if (i > 40) { diff = "EXPERT"; par = 65 + (i - 40) * 3; }
                 else if (i > 25) { diff = "HARD"; par = 40 + (i - 25) * 2; }
                 else if (i > 10) { diff = "MEDIUM"; par = 22 + (i - 10) * 2; }
@@ -428,7 +433,6 @@
                 list.push({
                     id: i,
                     name: `Stage ${i}`,
-                    mode: isIce ? "ice" : "klotski",
                     difficulty: diff,
                     parMoves: par,
                     blocks: blocks
@@ -497,7 +501,6 @@
             } catch(e) { console.warn(e); }
         }
 
-        // Web Audio Synthesizer
         class SoundEngine {
             constructor() { this.ctx = null; }
             init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -555,15 +558,14 @@
 
         let currentLevelIndex = 0;
         let currentBlocks = [];
-        let isIceSlideMode = false;
         let moveCount = 0;
         let gameTimer = null;
         let elapsedSeconds = 0;
         let selectedBlockId = null;
         let isGameWon = false;
 
-        let dragStartPos = null;
-        let activeDragBlock = null;
+        // REALTIME DRAG STATE VARIABLES
+        let activeDrag = null;
 
         const gridBgEl = document.getElementById('gridBackground');
         const blocksContainerEl = document.getElementById('blocksContainer');
@@ -574,8 +576,6 @@
         const lcdStatusTextEl = document.getElementById('lcdStatusText');
         const lcdDiffEl = document.getElementById('lcdDiff');
         const lcdBestMovesEl = document.getElementById('lcdBestMoves');
-        const modeBadgeText = document.getElementById('modeText');
-        const slideModeLabel = document.getElementById('slideModeLabel');
 
         function initGridUI() {
             gridBgEl.innerHTML = '';
@@ -599,7 +599,6 @@
 
         function loadLevel(levelData) {
             currentBlocks = JSON.parse(JSON.stringify(levelData.blocks));
-            isIceSlideMode = levelData.mode === 'ice';
             moveCount = 0;
             elapsedSeconds = 0;
             selectedBlockId = null;
@@ -609,8 +608,6 @@
             lcdMovesEl.textContent = '0';
             lcdParMovesEl.textContent = `/${levelData.parMoves}`;
             lcdDiffEl.textContent = levelData.difficulty;
-            modeBadgeText.textContent = isIceSlideMode ? 'Ice Slide' : 'Klotski';
-            slideModeLabel.textContent = isIceSlideMode ? 'ICE' : 'STEP';
 
             const bestData = userProgress.levelData[levelData.id];
             lcdBestMovesEl.textContent = bestData ? `BEST: ${bestData.bestMoves} m` : 'BEST: --';
@@ -619,7 +616,7 @@
             updateTimerDisplay();
             startTimer();
 
-            lcdStatusTextEl.textContent = 'SLIDE TO EXIT';
+            lcdStatusTextEl.textContent = 'DRAG & RELEASE';
             renderBlocks();
         }
 
@@ -649,7 +646,7 @@
                 const isSelected = selectedBlockId === block.id;
                 const selectBorder = isSelected ? 'ring-4 ring-cyan-400 scale-[0.98]' : '';
 
-                blockEl.className = `game-block absolute rounded-2xl p-1 flex flex-col items-center justify-center font-bold text-center cursor-pointer pointer-events-auto ${colorClass} ${selectBorder}`;
+                blockEl.className = `game-block absolute rounded-2xl p-1 flex flex-col items-center justify-center font-bold text-center cursor-grab active:cursor-grabbing pointer-events-auto ${colorClass} ${selectBorder}`;
                 
                 blockEl.style.left = `${(block.x / GRID_COLS) * 100}%`;
                 blockEl.style.top = `${(block.y / GRID_ROWS) * 100}%`;
@@ -667,17 +664,8 @@
                     blockEl.innerHTML = `<span class="text-[9px] opacity-40 font-tech"><i class="fa-solid fa-microchip"></i></span>`;
                 }
 
-                blockEl.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    selectedBlockId = block.id;
-                    audio.playClick();
-                    renderBlocks();
-                });
-
-                blockEl.addEventListener('touchstart', (e) => handleTouchStart(e, block), { passive: false });
-                blockEl.addEventListener('touchmove', (e) => handleTouchMove(e), { passive: false });
-                blockEl.addEventListener('touchend', (e) => handleTouchEnd(e), { passive: false });
-                blockEl.addEventListener('mousedown', (e) => handleMouseDown(e, block));
+                // Interactive Pointer Handlers (Realtime Drag)
+                blockEl.addEventListener('pointerdown', (e) => startRealtimeDrag(e, block, blockEl));
 
                 blocksContainerEl.appendChild(blockEl);
             });
@@ -691,7 +679,127 @@
             return !(b1.x + b1.w <= b2.x || b2.x + b2.w <= b1.x || b1.y + b1.h <= b2.y || b2.y + b2.h <= b1.y);
         }
 
-        // FIXED: Moves block step-by-step (1 space per swipe/click) instead of sliding all the way
+        // REALTIME DRAG LOGIC
+        function startRealtimeDrag(e, block, el) {
+            if (isGameWon) return;
+            e.preventDefault();
+            selectedBlockId = block.id;
+            
+            const rect = blocksContainerEl.getBoundingClientRect();
+            const cellW = rect.width / GRID_COLS;
+            const cellH = rect.height / GRID_ROWS;
+
+            activeDrag = {
+                block,
+                el,
+                startX: block.x,
+                startY: block.y,
+                pointerStartX: e.clientX,
+                pointerStartY: e.clientY,
+                cellW,
+                cellH,
+                rect
+            };
+
+            el.classList.add('is-dragging');
+            
+            window.addEventListener('pointermove', onRealtimeDragMove);
+            window.addEventListener('pointerup', onRealtimeDragEnd);
+            window.addEventListener('pointercancel', onRealtimeDragEnd);
+        }
+
+        function onRealtimeDragMove(e) {
+            if (!activeDrag) return;
+
+            const dx = e.clientX - activeDrag.pointerStartX;
+            const dy = e.clientY - activeDrag.pointerStartY;
+
+            // Convert pointer displacement to grid cell offsets
+            let targetGridX = Math.round(activeDrag.startX + (dx / activeDrag.cellW));
+            let targetGridY = Math.round(activeDrag.startY + (dy / activeDrag.cellH));
+
+            // Constrain block movement along physical boundaries & surrounding obstacles
+            if (Math.abs(dx) > Math.abs(dy)) {
+                targetGridY = activeDrag.startY;
+            } else {
+                targetGridX = activeDrag.startX;
+            }
+
+            // Realtime position preview in pixels during drag
+            const currentPxLeft = (activeDrag.startX * activeDrag.cellW) + dx;
+            const currentPxTop = (activeDrag.startY * activeDrag.cellH) + dy;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                activeDrag.el.style.left = `${currentPxLeft}px`;
+            } else {
+                activeDrag.el.style.top = `${currentPxTop}px`;
+            }
+        }
+
+        function onRealtimeDragEnd(e) {
+            if (!activeDrag) return;
+
+            window.removeEventListener('pointermove', onRealtimeDragMove);
+            window.removeEventListener('pointerup', onRealtimeDragEnd);
+            window.removeEventListener('pointercancel', onRealtimeDragEnd);
+
+            const dx = e.clientX - activeDrag.pointerStartX;
+            const dy = e.clientY - activeDrag.pointerStartY;
+
+            let gridDx = Math.round(dx / activeDrag.cellW);
+            let gridDy = Math.round(dy / activeDrag.cellH);
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                gridDy = 0;
+            } else {
+                gridDx = 0;
+            }
+
+            const { block, startX, startY, el } = activeDrag;
+            el.classList.remove('is-dragging');
+
+            let finalX = startX;
+            let finalY = startY;
+
+            // Step-by-step path collision validation to find the furthest valid position
+            const stepX = Math.sign(gridDx);
+            const stepY = Math.sign(gridDy);
+            let currX = startX;
+            let currY = startY;
+
+            while (currX !== startX + gridDx || currY !== startY + gridDy) {
+                const nextX = currX + stepX;
+                const nextY = currY + stepY;
+
+                if (!isValidPosition(nextX, nextY, block.w, block.h)) break;
+
+                const tempBlock = { ...block, x: nextX, y: nextY };
+                const hasCollision = currentBlocks.some(other => other.id !== block.id && isOverlapping(tempBlock, other));
+                
+                if (hasCollision) break;
+
+                currX = nextX;
+                currY = nextY;
+            }
+
+            finalX = currX;
+            finalY = currY;
+
+            activeDrag = null;
+
+            if (finalX !== startX || finalY !== startY) {
+                block.x = finalX;
+                block.y = finalY;
+                moveCount++;
+                lcdMovesEl.textContent = moveCount;
+                audio.playSlide();
+                checkWinCondition();
+                saveLocalProgress();
+            }
+
+            renderBlocks();
+        }
+
         function moveBlock(blockId, dx, dy) {
             if (isGameWon) return false;
 
@@ -778,64 +886,6 @@
                 document.getElementById('winTime').textContent = lcdTimerEl.textContent;
                 document.getElementById('winModal').classList.remove('hidden');
             }
-        }
-
-        function handleTouchStart(e, block) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            dragStartPos = { x: touch.clientX, y: touch.clientY };
-            activeDragBlock = block;
-            selectedBlockId = block.id;
-            renderBlocks();
-        }
-
-        function handleTouchMove(e) {
-            if (!dragStartPos || !activeDragBlock) return;
-            e.preventDefault();
-        }
-
-        function handleTouchEnd(e) {
-            if (!dragStartPos || !activeDragBlock) return;
-            const touch = e.changedTouches[0];
-            const dx = touch.clientX - dragStartPos.x;
-            const dy = touch.clientY - dragStartPos.y;
-
-            const SWIPE_THRESHOLD = 15;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (Math.abs(dx) > SWIPE_THRESHOLD) moveBlock(activeDragBlock.id, dx > 0 ? 1 : -1, 0);
-            } else {
-                if (Math.abs(dy) > SWIPE_THRESHOLD) moveBlock(activeDragBlock.id, 0, dy > 0 ? 1 : -1);
-            }
-
-            dragStartPos = null;
-            activeDragBlock = null;
-        }
-
-        let mouseStart = null;
-        function handleMouseDown(e, block) {
-            mouseStart = { x: e.clientX, y: e.clientY };
-            const handleMouseMove = (me) => {
-                if (!mouseStart) return;
-                const dx = me.clientX - mouseStart.x;
-                const dy = me.clientY - mouseStart.y;
-                if (Math.abs(dx) > 15 || Math.abs(dy) > 15) {
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        moveBlock(block.id, dx > 0 ? 1 : -1, 0);
-                    } else {
-                        moveBlock(block.id, 0, dy > 0 ? 1 : -1);
-                    }
-                    mouseStart = null;
-                    window.removeEventListener('mousemove', handleMouseMove);
-                }
-            };
-            const handleMouseUp = () => {
-                mouseStart = null;
-                window.removeEventListener('mousemove', handleMouseMove);
-                window.removeEventListener('mouseup', handleMouseUp);
-            };
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
         }
 
         function startTimer() {
@@ -942,13 +992,6 @@
         document.getElementById('btnReset').addEventListener('click', () => {
             audio.playClick();
             loadLevel(PRESET_LEVELS[currentLevelIndex]);
-        });
-
-        document.getElementById('btnModeToggle').addEventListener('click', () => {
-            audio.playClick();
-            isIceSlideMode = !isIceSlideMode;
-            modeBadgeText.textContent = isIceSlideMode ? 'Ice Slide' : 'Klotski';
-            slideModeLabel.textContent = isIceSlideMode ? 'ICE' : 'STEP';
         });
 
         document.getElementById('btnNextLevel').addEventListener('click', () => {
