@@ -802,29 +802,59 @@
 
         function moveBlock(blockId, dx, dy) {
             if (isGameWon) return false;
-
+        
             const block = currentBlocks.find(b => b.id === blockId);
             if (!block) return false;
-
-            const targetX = block.x + dx;
-            const targetY = block.y + dy;
-
-            if (!isValidPosition(targetX, targetY, block.w, block.h)) return false;
-
-            const tempBlock = { ...block, x: targetX, y: targetY };
-            const hasCollision = currentBlocks.some(other => other.id !== block.id && isOverlapping(tempBlock, other));
-
-            if (hasCollision) return false;
-
-            block.x = targetX;
-            block.y = targetY;
-            moveCount++;
-            lcdMovesEl.textContent = moveCount;
-            audio.playSlide();
-            renderBlocks();
-            checkWinCondition();
-            saveLocalProgress();
-            return true;
+        
+            let targetX = block.x;
+            let targetY = block.y;
+            let moved = false;
+        
+            if (isIceSlideMode) {
+                // Continuous sliding mode (slides all the way to obstacle/wall)
+                while (true) {
+                    const nextX = targetX + dx;
+                    const nextY = targetY + dy;
+                    if (!isValidPosition(nextX, nextY, block.w, block.h)) break;
+        
+                    const tempBlock = { ...block, x: nextX, y: nextY };
+                    const hasCollision = currentBlocks.some(other => other.id !== block.id && isOverlapping(tempBlock, other));
+                    if (hasCollision) break;
+        
+                    targetX = nextX;
+                    targetY = nextY;
+                    moved = true;
+                }
+            } else {
+                // Standard Klotski single-step mode (moves exactly 1 space to adjacent area)
+                const nextX = targetX + dx;
+                const nextY = targetY + dy;
+        
+                if (isValidPosition(nextX, nextY, block.w, block.h)) {
+                    const tempBlock = { ...block, x: nextX, y: nextY };
+                    const hasCollision = currentBlocks.some(other => other.id !== block.id && isOverlapping(tempBlock, other));
+                    
+                    if (!hasCollision) {
+                        targetX = nextX;
+                        targetY = nextY;
+                        moved = true;
+                    }
+                }
+            }
+        
+            if (moved) {
+                block.x = targetX;
+                block.y = targetY;
+                moveCount++;
+                lcdMovesEl.textContent = moveCount;
+                audio.playSlide();
+                renderBlocks();
+                checkWinCondition();
+                saveLocalProgress();
+                return true;
+            }
+        
+            return false;
         }
 
         function calculateHint() {
