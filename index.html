@@ -105,6 +105,13 @@
             50% { border-color: #facc15; opacity: 1; }
         }
 
+        /* Splash Screen Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+        .animate-blink { animation: blink 1.2s infinite; }
+
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: #020617; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
@@ -112,6 +119,49 @@
 </head>
 <body class="w-screen h-screen flex items-center justify-center p-2 lg:p-6 select-none overflow-hidden">
 
+    <!-- OPENING LOGO / SPLASH SCREEN OVERLAY -->
+    <div id="splashScreen" class="fixed inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-between p-6 cursor-pointer transition-opacity duration-700">
+        <div class="w-full flex justify-end">
+            <span class="font-tech text-xs text-slate-500 tracking-widest">v1.0.0</span>
+        </div>
+
+        <div class="flex flex-col items-center justify-center text-center my-auto">
+            <!-- Studio / Developer Stamp -->
+            <div class="text-xs sm:text-sm font-tech text-lime-400/80 tracking-[0.3em] uppercase mb-4 animate-pulse">
+                <i class="fa-solid fa-code text-xs mr-1"></i> Made by lesleclerc
+            </div>
+
+            <!-- Big Main Game Logo -->
+            <div class="relative flex items-center justify-center mb-6">
+                <div class="w-20 h-20 sm:w-24 sm:h-24 bg-lime-400 rounded-3xl flex items-center justify-center text-slate-950 text-4xl sm:text-5xl font-bold shadow-[0_0_35px_rgba(163,230,53,0.5)] transform -rotate-6">
+                    <i class="fa-solid fa-cubes"></i>
+                </div>
+                <div class="w-10 h-10 bg-amber-400 rounded-2xl flex items-center justify-center text-slate-950 text-xl font-bold absolute -bottom-2 -right-2 shadow-lg border-2 border-slate-950 transform rotate-12">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+            </div>
+
+            <h1 class="font-tech text-3xl sm:text-5xl font-bold text-white tracking-widest uppercase mb-1">
+                SWIFT<span class="text-lime-400">BLOCK</span>
+            </h1>
+            <p class="font-lcd text-slate-400 text-lg sm:text-xl tracking-wider mb-8">SMART SLIDE PUZZLE CONSOLE</p>
+
+            <!-- Loading bar & Tap Prompt -->
+            <div id="splashLoading" class="w-48 bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700 mb-6">
+                <div id="splashProgressBar" class="bg-lime-400 h-full w-0 transition-all duration-300"></div>
+            </div>
+
+            <div id="splashPrompt" class="hidden font-tech text-xs sm:text-sm text-lime-400 tracking-widest uppercase animate-blink bg-slate-900/80 px-4 py-2 rounded-xl border border-lime-500/30">
+                <i class="fa-solid fa-hand-pointer mr-1.5"></i> TAP OR PRESS ANY BUTTON TO START
+            </div>
+        </div>
+
+        <div class="text-[10px] font-tech text-slate-600 tracking-wider">
+            © 2026 LESLECLERC • ALL RIGHTS RESERVED
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
     <div id="app" class="w-full h-full flex items-center justify-center">
 
         <!-- CONSOLE WRAPPER -->
@@ -123,10 +173,12 @@
                     <div class="w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center text-lime-400 font-bold text-xs shadow-inner">
                         <i class="fa-solid fa-cubes"></i>
                     </div>
-                    <span class="font-tech font-bold text-slate-800 text-sm sm:text-base lg:text-lg tracking-wider">
-                        SWIFT<span class="text-lime-600">BLOCK</span>
-                        <span class="text-[10px] sm:text-xs text-slate-500 font-normal ml-1">50 STAGES</span>
-                    </span>
+                    <div>
+                        <span class="font-tech font-bold text-slate-800 text-sm sm:text-base lg:text-lg tracking-wider block leading-none">
+                            SWIFT<span class="text-lime-600">BLOCK</span>
+                        </span>
+                        <span class="text-[9px] text-slate-500 font-tech uppercase tracking-wider block">BY LESLECLERC</span>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-1.5 sm:gap-2">
@@ -238,7 +290,7 @@
 
             <!-- FOOTER STATUS BAR -->
             <div class="w-full text-center text-[10px] text-slate-500 font-tech pt-1 border-t border-slate-300/80 flex justify-between items-center shrink-0">
-                <span>SWIFT BLOCK • 50 STAGES</span>
+                <span>MADE BY LESLECLERC • 50 STAGES</span>
                 <span id="lcdBestMoves" class="font-bold text-slate-700">BEST: --</span>
             </div>
 
@@ -502,7 +554,7 @@
             } catch(e) { console.warn(e); }
         }
 
-        // Enhanced Web Audio Synthesizer
+        // Web Audio Synthesizer
         class SoundEngine {
             constructor() { 
                 this.ctx = null; 
@@ -515,6 +567,24 @@
                 if (this.ctx.state === 'suspended') {
                     this.ctx.resume();
                 }
+            }
+
+            playBootJingle() {
+                if (!userProgress.settings.soundEnabled) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.2);
+                });
             }
 
             playClick() {
@@ -535,8 +605,6 @@
             playSlide(blockSize = 1) {
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
-                
-                // Adjust pitch depending on block size (larger blocks sound deeper)
                 const freq = blockSize > 2 ? 160 : blockSize === 2 ? 210 : 280;
                 
                 const osc = this.ctx.createOscillator();
@@ -579,7 +647,7 @@
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
                 const now = this.ctx.currentTime;
-                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                const notes = [523.25, 659.25, 783.99, 1046.50];
                 
                 notes.forEach((freq, idx) => {
                     const osc = this.ctx.createOscillator();
@@ -602,9 +670,34 @@
 
         const audio = new SoundEngine();
 
-        // Global unlock Audio Context on first interaction
-        window.addEventListener('click', () => audio.init(), { once: true });
-        window.addEventListener('touchstart', () => audio.init(), { once: true });
+        // Boot Screen Sequence Handler
+        function runBootSequence() {
+            const progressBar = document.getElementById('splashProgressBar');
+            const prompt = document.getElementById('splashPrompt');
+            const splashScreen = document.getElementById('splashScreen');
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 20;
+                progressBar.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('splashLoading').classList.add('hidden');
+                    prompt.classList.remove('hidden');
+                }
+            }, 100);
+
+            const startApp = () => {
+                audio.init();
+                audio.playBootJingle();
+                splashScreen.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => splashScreen.remove(), 700);
+            };
+
+            splashScreen.addEventListener('click', startApp, { once: true });
+            splashScreen.addEventListener('touchstart', startApp, { once: true });
+            window.addEventListener('keydown', startApp, { once: true });
+        }
 
         const GRID_COLS = 4;
         const GRID_ROWS = 5;
@@ -1211,6 +1304,7 @@
             loadLocalProgress();
             initAuthAndFirestore();
             loadLevel(PRESET_LEVELS[0]);
+            runBootSequence();
         };
     </script>
 </body>
