@@ -554,8 +554,8 @@
             } catch(e) { console.warn(e); }
         }
 
-        // Web Audio Synthesizer
-        class SoundEngine {
+        // Authentic Game Boy / 8-Bit Web Audio Synthesizer
+        class GameBoySoundEngine {
             constructor() { 
                 this.ctx = null; 
             }
@@ -569,106 +569,138 @@
                 }
             }
 
+            // Authentic Game Boy 2-tone Ping Boot Sound
             playBootJingle() {
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
                 const now = this.ctx.currentTime;
-                [261.63, 329.63, 392.00, 523.25].forEach((freq, idx) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
-                    gain.gain.setValueAtTime(0.15, now + idx * 0.08);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now + idx * 0.08);
-                    osc.stop(now + idx * 0.08 + 0.2);
-                });
+
+                // First tone (low ping)
+                const osc1 = this.ctx.createOscillator();
+                const gain1 = this.ctx.createGain();
+                osc1.type = 'square';
+                osc1.frequency.setValueAtTime(1046.50, now); // C6
+                gain1.gain.setValueAtTime(0.15, now);
+                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc1.connect(gain1);
+                gain1.connect(this.ctx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.1);
+
+                // High chime tone (classic GB boot chime)
+                const osc2 = this.ctx.createOscillator();
+                const gain2 = this.ctx.createGain();
+                osc2.type = 'square';
+                osc2.frequency.setValueAtTime(2093.00, now + 0.22); // C7
+                gain2.gain.setValueAtTime(0.2, now + 0.22);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+                osc2.connect(gain2);
+                gain2.connect(this.ctx.destination);
+                osc2.start(now + 0.22);
+                osc2.stop(now + 0.95);
             }
 
+            // 8-Bit UI Button Click
             playClick() {
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
+                const now = this.ctx.currentTime;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(450, this.ctx.currentTime);
-                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(600, now);
+                osc.frequency.setValueAtTime(900, now + 0.02);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.setValueAtTime(0.001, now + 0.04);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.04);
             }
 
+            // Game Boy Square Wave Slide / Fling Sound Effect
             playSlide(blockSize = 1) {
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
-                const freq = blockSize > 2 ? 160 : blockSize === 2 ? 210 : 280;
+                const now = this.ctx.currentTime;
                 
+                const baseFreq = blockSize > 2 ? 150 : blockSize === 2 ? 220 : 310;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(freq * 0.7, this.ctx.currentTime + 0.12);
-                
-                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
-                
+
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(baseFreq * 1.5, now);
+                osc.frequency.linearRampToValueAtTime(baseFreq, now + 0.08);
+
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.setValueAtTime(0.001, now + 0.08);
+
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.12);
+                osc.start(now);
+                osc.stop(now + 0.08);
             }
 
+            // 8-Bit White Noise Channel Wall Thud / Collision
             playBump() {
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
-                
-                const osc = this.ctx.createOscillator();
+                const now = this.ctx.currentTime;
+
+                // Create 8-bit Noise Buffer
+                const bufferSize = this.ctx.sampleRate * 0.05;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(300, now);
+
                 const gain = this.ctx.createGain();
-                
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(110, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.06);
-                
-                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.06);
-                
-                osc.connect(gain);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+                noise.connect(filter);
+                filter.connect(gain);
                 gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.06);
+
+                noise.start(now);
+                noise.stop(now + 0.05);
             }
 
+            // 8-Bit Chiptune Stage Complete Victory Arpeggio
             playWin() {
                 if (!userProgress.settings.soundEnabled) return;
                 this.init();
                 const now = this.ctx.currentTime;
-                const notes = [523.25, 659.25, 783.99, 1046.50];
-                
-                notes.forEach((freq, idx) => {
+                const arpeggio = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+
+                arpeggio.forEach((freq, idx) => {
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
-                    
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.09);
-                    
-                    gain.gain.setValueAtTime(0.2, now + idx * 0.09);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.09 + 0.25);
-                    
+
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+                    gain.gain.setValueAtTime(0.12, now + idx * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.12);
+
                     osc.connect(gain);
                     gain.connect(this.ctx.destination);
-                    
-                    osc.start(now + idx * 0.09);
-                    osc.stop(now + idx * 0.09 + 0.25);
+
+                    osc.start(now + idx * 0.06);
+                    osc.stop(now + idx * 0.06 + 0.12);
                 });
             }
         }
 
-        const audio = new SoundEngine();
+        const audio = new GameBoySoundEngine();
 
         // Boot Screen Sequence Handler
         function runBootSequence() {
