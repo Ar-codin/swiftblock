@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Swift Block - Smart Slide Puzzle Console</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Fredoka:wght@400;600;700&family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Fredoka', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            background: radial-gradient(circle at center, #0f172a, #020617);
+        }
+
+        .font-lcd { font-family: 'VT323', monospace; }
+        .font-tech { font-family: 'Chakra Petch', sans-serif; }
+
+        /* Tactile 3D Buttons */
+        .btn-3d {
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), inset 0 2px 2px rgba(255, 255, 255, 0.4);
+        }
+        .btn-3d:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+        }
+
+        .btn-dpad {
+            box-shadow: 0 3px 0 #334155, inset 0 2px 2px rgba(255, 255, 255, 0.3);
+        }
+        .btn-dpad:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 #1e293b;
+        }
+
+        /* Console Casing Outer Shadow */
+        .console-casing {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 6px #cbd5e1, inset 0 4px 8px rgba(255, 255, 255, 0.9);
+        }
+
+        .board-tray {
+            box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(255, 255, 255, 0.8);
+            background-color: #f1f5f9;
+        }
+
+        /* Smooth CSS Block Movement */
+        .game-block {
+            transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), left 0.22s cubic-bezier(0.16, 1, 0.3, 1), top 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: left, top, transform;
+            touch-action: none;
+        }
+
+        /* Block Color Themes matching Reference Console */
+        .block-lime {
+            background: linear-gradient(135deg, #d9f99d 0%, #a3e635 100%);
+            box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.7), 0 5px 0 #65a30d, 0 6px 10px rgba(0, 0, 0, 0.25);
+            border: 3px solid #84cc16;
+            color: #1a2e05;
+        }
+
+        .block-dark {
+            background: linear-gradient(135deg, #334155 0%, #0f172a 100%);
+            box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.2), 0 5px 0 #020617, 0 6px 10px rgba(0, 0, 0, 0.35);
+            border: 3px solid #475569;
+            color: #ccff00;
+        }
+
+        .block-hero {
+            background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);
+            box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.8), 0 6px 0 #854d0e, 0 8px 12px rgba(0, 0, 0, 0.3);
+            border: 4px solid #fde047;
+            color: #422006;
+        }
+
+        .target-zone {
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(234, 179, 8, 0.15),
+                rgba(234, 179, 8, 0.15) 10px,
+                rgba(250, 204, 21, 0.25) 10px,
+                rgba(250, 204, 21, 0.25) 20px
+            );
+            border: 3px dashed #eab308;
+            box-shadow: inset 0 0 15px rgba(234, 179, 8, 0.3);
+            animation: pulse-border 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: #eab308; opacity: 0.8; }
+            50% { border-color: #facc15; opacity: 1; }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body class="w-screen h-screen flex items-center justify-center p-2 lg:p-6 select-none overflow-hidden">
+
+    <div id="app" class="w-full h-full flex items-center justify-center">
+
+        <!-- CONSOLE WRAPPER -->
+        <div class="console-casing bg-slate-100 rounded-[35px] lg:rounded-[40px] border-4 border-slate-300 p-3 sm:p-5 w-full h-full max-w-sm sm:max-w-md lg:max-w-[80vw] lg:max-h-[80vh] flex flex-col justify-between relative overflow-hidden">
+
+            <!-- HEADER / TOP BRAND BAR -->
+            <div class="w-full flex items-center justify-between px-1 pb-2 border-b border-slate-300/80 shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 bg-slate-900 rounded-lg flex items-center justify-center text-lime-400 font-bold text-xs shadow-inner">
+                        <i class="fa-solid fa-cubes"></i>
+                    </div>
+                    <span class="font-tech font-bold text-slate-800 text-sm sm:text-base lg:text-lg tracking-wider">
+                        SWIFT<span class="text-lime-600">BLOCK</span>
+                        <span class="text-[10px] sm:text-xs text-slate-500 font-normal ml-1">50 STAGES</span>
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <button id="btnSaveData" title="Cloud & Save Options" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-300 flex items-center gap-1">
+                        <i class="fa-solid fa-cloud text-emerald-600"></i>
+                        <span id="saveStateText" class="hidden sm:inline">Saved</span>
+                    </button>
+                    <div id="modeBadge" class="bg-slate-200 text-slate-700 text-[10px] sm:text-xs font-bold px-2 py-1 rounded-lg border border-slate-300 flex items-center gap-1">
+                        <i class="fa-solid fa-sliders text-lime-600"></i>
+                        <span id="modeText">Klotski</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT AREA -->
+            <div class="w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-6 items-center my-2 min-h-0 overflow-hidden">
+
+                <!-- TOP SECTION ON MOBILE / LEFT PANEL ON DESKTOP -->
+                <div class="lg:col-span-5 h-auto lg:h-full flex flex-col justify-between gap-2 shrink-0">
+                    
+                    <div class="grid grid-cols-12 gap-2 items-center bg-slate-200/80 p-2 sm:p-3 rounded-2xl border-2 border-slate-300">
+                        
+                        <!-- LCD DIGITAL DISPLAY SCREEN -->
+                        <div class="col-span-7 bg-slate-950 border-4 border-slate-800 rounded-xl p-2 shadow-inner relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                            <div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:4px_4px] opacity-40 pointer-events-none"></div>
+
+                            <div class="relative z-10">
+                                <div class="flex justify-between items-center text-lime-400 font-lcd text-base sm:text-lg border-b border-slate-800 pb-0.5">
+                                    <span>LVL <span id="lcdLevel" class="text-white">01</span><span class="text-[10px] text-slate-500">/50</span></span>
+                                    <span id="lcdDiff" class="text-[9px] font-tech text-lime-500 bg-slate-900 px-1.5 py-0.2 rounded uppercase">EASY</span>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-1 text-lime-400 font-lcd text-sm sm:text-base my-1">
+                                    <div class="bg-slate-900/80 p-1 rounded border border-slate-800">
+                                        <div class="text-[8px] font-tech text-slate-400">TIME</div>
+                                        <span id="lcdTimer" class="text-white">00:00</span>
+                                    </div>
+                                    <div class="bg-slate-900/80 p-1 rounded border border-slate-800">
+                                        <div class="text-[8px] font-tech text-slate-400">MOVES</div>
+                                        <span id="lcdMoves" class="text-white">0</span><span id="lcdParMoves" class="text-[10px] text-slate-500">/15</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative z-10 flex justify-between items-center pt-1 border-t border-slate-800 text-[10px] font-tech">
+                                <span id="lcdStatusText" class="text-emerald-400 font-bold truncate">SLIDE TO EXIT</span>
+                                <div id="lcdStars" class="flex gap-0.5 text-amber-400 text-[10px]">
+                                    <i class="fa-regular fa-star"></i>
+                                    <i class="fa-regular fa-star"></i>
+                                    <i class="fa-regular fa-star"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- COMPACT PHYSICAL D-PAD -->
+                        <div class="col-span-5 flex items-center justify-center">
+                            <div class="relative w-24 h-24 sm:w-28 sm:h-28 bg-slate-300 rounded-full p-1 border-2 border-slate-400 shadow-md flex items-center justify-center">
+                                <button id="dpadUp" class="btn-dpad absolute top-1 bg-slate-700 hover:bg-slate-600 text-amber-400 w-8 h-8 rounded-t-lg flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-caret-up"></i>
+                                </button>
+                                <button id="dpadDown" class="btn-dpad absolute bottom-1 bg-slate-700 hover:bg-slate-600 text-cyan-400 w-8 h-8 rounded-b-lg flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-caret-down"></i>
+                                </button>
+                                <button id="dpadLeft" class="btn-dpad absolute left-1 bg-slate-700 hover:bg-slate-600 text-rose-400 w-8 h-8 rounded-l-lg flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-caret-left"></i>
+                                </button>
+                                <button id="dpadRight" class="btn-dpad absolute right-1 bg-slate-700 hover:bg-slate-600 text-lime-400 w-8 h-8 rounded-r-lg flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-caret-right"></i>
+                                </button>
+                                <div class="w-6 h-6 bg-slate-400 rounded-full border border-slate-500 shadow-inner flex items-center justify-center">
+                                    <div class="w-1.5 h-1.5 rounded-full bg-slate-500"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- CONTROL TOOLBAR BUTTONS -->
+                    <div class="grid grid-cols-4 gap-1.5 mt-1">
+                        <button id="btnLevels" title="Select Stage" class="btn-3d bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-list-check"></i> <span class="hidden sm:inline">STAGES</span>
+                        </button>
+                        <button id="btnHint" title="Get Hint" class="btn-3d bg-amber-500 hover:bg-amber-400 text-slate-950 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-lightbulb"></i> <span class="hidden sm:inline">HINT</span>
+                        </button>
+                        <button id="btnReset" title="Reset Level" class="btn-3d bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> <span class="hidden sm:inline">RESET</span>
+                        </button>
+                        <button id="btnModeToggle" title="Toggle Ice / Klotski Mode" class="btn-3d bg-teal-600 hover:bg-teal-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                            <i class="fa-solid fa-snowflake"></i> <span id="slideModeLabel">ICE</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- MAIN PUZZLE TRAY -->
+                <div class="lg:col-span-7 h-full flex items-center justify-center min-h-0 overflow-hidden">
+                    <div id="boardContainer" class="relative w-full aspect-[4/5] max-h-full board-tray rounded-3xl p-2.5 sm:p-3 overflow-hidden border-2 border-slate-300 mx-auto">
+                        <div id="gridBackground" class="w-full h-full grid grid-cols-4 grid-rows-5 gap-2 relative"></div>
+                        <div id="blocksContainer" class="absolute inset-2.5 sm:inset-3 pointer-events-none"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FOOTER STATUS BAR -->
+            <div class="w-full text-center text-[10px] text-slate-500 font-tech pt-1 border-t border-slate-300/80 flex justify-between items-center shrink-0">
+                <span>SWIFT BLOCK • 50 STAGES</span>
+                <span id="lcdBestMoves" class="font-bold text-slate-700">BEST: --</span>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 50-STAGE LEVEL SELECTION MODAL -->
+    <div id="levelModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+        <div class="bg-slate-900 border-2 border-slate-700 rounded-3xl p-4 w-full max-w-xl text-white shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <h3 class="font-tech text-base font-bold text-lime-400 flex items-center gap-2">
+                    <i class="fa-solid fa-grid-2"></i> STAGE SELECT (1 - 50)
+                </h3>
+                <button id="btnCloseLevels" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Stage Filter Tabs -->
+            <div class="flex gap-1.5 mb-3 bg-slate-950 p-1 rounded-xl text-[11px] font-bold border border-slate-800">
+                <button data-range="all" class="level-tab-btn flex-1 py-1 rounded-lg bg-lime-500 text-slate-950">ALL</button>
+                <button data-range="easy" class="level-tab-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white">1-10</button>
+                <button data-range="medium" class="level-tab-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white">11-25</button>
+                <button data-range="hard" class="level-tab-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white">26-40</button>
+                <button data-range="expert" class="level-tab-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white">41-50</button>
+            </div>
+
+            <div id="levelsGrid" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5 overflow-y-auto pr-1 flex-1"></div>
+        </div>
+    </div>
+
+    <!-- SAVE DATA / CLOUD BACKUP MODAL -->
+    <div id="saveModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-2 border-slate-700 rounded-3xl p-5 w-full max-w-md text-white shadow-2xl flex flex-col">
+            <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                <h3 class="font-tech text-base font-bold text-emerald-400 flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> CLOUD & SAVE MANAGER
+                </h3>
+                <button id="btnCloseSaveModal" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div id="cloudUserBanner" class="bg-slate-800 p-3 rounded-2xl mb-3 border border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <div id="cloudUserName" class="text-xs font-bold text-white">Local Console User</div>
+                        <div id="cloudUserStatus" class="text-[10px] text-slate-400">LocalStorage Active</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <button id="btnExportJSON" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-download text-emerald-400"></i> Export JSON
+                </button>
+                <button id="btnImportJSON" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-upload text-indigo-400"></i> Import JSON
+                </button>
+                <input type="file" id="fileInputJSON" accept=".json" class="hidden">
+            </div>
+
+            <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                <button id="btnResetProgress" class="text-red-400 hover:text-red-300 text-xs font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-trash-can"></i> Reset Progress
+                </button>
+                <button id="btnCloseSaveManager" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-1.5 rounded-xl text-xs font-bold">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIN DIALOG OVERLAY -->
+    <div id="winModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-4 border-lime-400 rounded-3xl p-5 w-full max-w-xs text-center text-white shadow-2xl flex flex-col items-center">
+            <div class="w-14 h-14 bg-lime-400 text-slate-950 rounded-2xl flex items-center justify-center text-2xl font-bold mb-2 shadow-lg">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 class="font-tech text-xl font-bold text-lime-400 mb-0.5">STAGE CLEARED!</h2>
+            <p id="winStageSubtitle" class="text-xs text-slate-400 mb-3">Great job!</p>
+
+            <div id="winStars" class="flex justify-center gap-2 text-xl text-amber-400 mb-3"></div>
+
+            <div class="bg-slate-800 rounded-xl p-2.5 w-full flex justify-around mb-4 text-xs">
+                <div>
+                    <div class="text-slate-400 text-[10px]">Moves</div>
+                    <div id="winMoves" class="text-base font-bold text-white">0</div>
+                </div>
+                <div class="border-r border-slate-700"></div>
+                <div>
+                    <div class="text-slate-400 text-[10px]">Time</div>
+                    <div id="winTime" class="text-base font-bold text-white">00:00</div>
+                </div>
+            </div>
+
+            <button id="btnNextLevel" class="w-full bg-lime-400 hover:bg-lime-300 text-slate-950 py-2.5 rounded-xl font-bold text-xs btn-3d uppercase tracking-wider">
+                Next Stage <i class="fa-solid fa-arrow-right ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'swift-block-slide';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-key", authDomain: "demo.firebaseapp.com", projectId: "demo"
+        };
+
+        let app, auth, db, currentUser = null;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch(e) {
+            console.warn("Firebase offline/fallback mode active.");
+        }
+
+        // 50 Solvable Stage Generator
+        function generate50Levels() {
+            const list = [];
+            for (let i = 1; i <= 50; i++) {
+                let diff = "EASY";
+                let par = 14 + i;
+                let isIce = i % 4 === 0;
+
+                if (i > 40) { diff = "EXPERT"; par = 65 + (i - 40) * 3; }
+                else if (i > 25) { diff = "HARD"; par = 40 + (i - 25) * 2; }
+                else if (i > 10) { diff = "MEDIUM"; par = 22 + (i - 10) * 2; }
+
+                const variant = i % 4;
+                let blocks = [];
+
+                if (variant === 0) {
+                    blocks = [
+                        { id: 'hero', w: 2, h: 2, x: 1, y: 0, isHero: true },
+                        { id: 'b1', w: 1, h: 2, x: 0, y: 0 },
+                        { id: 'b2', w: 1, h: 2, x: 3, y: 0 },
+                        { id: 'b3', w: 2, h: 1, x: 1, y: 2 },
+                        { id: 's1', w: 1, h: 1, x: 0, y: 3 },
+                        { id: 's2', w: 1, h: 1, x: 3, y: 3 }
+                    ];
+                } else if (variant === 1) {
+                    blocks = [
+                        { id: 'hero', w: 2, h: 2, x: 1, y: 0, isHero: true },
+                        { id: 'b1', w: 1, h: 2, x: 0, y: 1 },
+                        { id: 'b2', w: 1, h: 2, x: 3, y: 1 },
+                        { id: 's1', w: 1, h: 1, x: 1, y: 2 },
+                        { id: 's2', w: 1, h: 1, x: 2, y: 2 },
+                        { id: 's3', w: 1, h: 1, x: 0, y: 4 },
+                        { id: 's4', w: 1, h: 1, x: 3, y: 4 }
+                    ];
+                } else if (variant === 2) {
+                    blocks = [
+                        { id: 'hero', w: 2, h: 2, x: 1, y: 0, isHero: true },
+                        { id: 'b1', w: 1, h: 2, x: 0, y: 0 },
+                        { id: 'b2', w: 1, h: 2, x: 3, y: 0 },
+                        { id: 'b3', w: 1, h: 2, x: 0, y: 2 },
+                        { id: 'b4', w: 1, h: 2, x: 3, y: 2 },
+                        { id: 's1', w: 1, h: 1, x: 1, y: 2 },
+                        { id: 's2', w: 1, h: 1, x: 2, y: 2 }
+                    ];
+                } else {
+                    blocks = [
+                        { id: 'hero', w: 2, h: 2, x: 1, y: 0, isHero: true },
+                        { id: 'b1', w: 2, h: 1, x: 0, y: 2 },
+                        { id: 'b2', w: 2, h: 1, x: 2, y: 2 },
+                        { id: 's1', w: 1, h: 1, x: 0, y: 0 },
+                        { id: 's2', w: 1, h: 1, x: 3, y: 0 },
+                        { id: 's3', w: 1, h: 1, x: 0, y: 3 },
+                        { id: 's4', w: 1, h: 1, x: 3, y: 3 }
+                    ];
+                }
+
+                list.push({
+                    id: i,
+                    name: `Stage ${i}`,
+                    mode: isIce ? "ice" : "klotski",
+                    difficulty: diff,
+                    parMoves: par,
+                    blocks: blocks
+                });
+            }
+            return list;
+        }
+
+        const PRESET_LEVELS = generate50Levels();
+
+        let userProgress = {
+            unlockedLevels: [1],
+            levelData: {},
+            settings: { soundEnabled: true }
+        };
+
+        const LOCAL_STORAGE_KEY = 'swift_block_50l_save_v4';
+
+        function loadLocalProgress() {
+            try {
+                const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (saved) userProgress = { ...userProgress, ...JSON.parse(saved) };
+            } catch(e) { console.error(e); }
+        }
+
+        function saveLocalProgress() {
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userProgress));
+                syncToCloudFirestore();
+            } catch(e) { console.error(e); }
+        }
+
+        async function initAuthAndFirestore() {
+            if (!auth || !db) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch(e) { console.warn(e); }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    document.getElementById('cloudUserName').textContent = user.isAnonymous ? "Guest Console User" : "Cloud Gamer";
+                    document.getElementById('cloudUserStatus').textContent = `UID: ${user.uid.slice(0, 8)}... (Synced)`;
+                    
+                    const userDocRef = doc(db, 'artifacts', appId, 'users', user.uid, 'userProgress', 'mainSave');
+                    onSnapshot(userDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            userProgress = { ...userProgress, ...docSnap.data() };
+                            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(userProgress));
+                            updateUIForProgress();
+                        }
+                    }, (err) => console.warn(err));
+                }
+            });
+        }
+
+        async function syncToCloudFirestore() {
+            if (!currentUser || !db) return;
+            try {
+                const userDocRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'userProgress', 'mainSave');
+                await setDoc(userDocRef, userProgress, { merge: true });
+            } catch(e) { console.warn(e); }
+        }
+
+        // Web Audio Synthesizer
+        class SoundEngine {
+            constructor() { this.ctx = null; }
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+            playClick() {
+                if (!userProgress.settings.soundEnabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+            playSlide() {
+                if (!userProgress.settings.soundEnabled) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+            playWin() {
+                if (!userProgress.settings.soundEnabled) return;
+                this.init();
+                [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.2);
+                });
+            }
+        }
+
+        const audio = new SoundEngine();
+
+        const GRID_COLS = 4;
+        const GRID_ROWS = 5;
+        const TARGET_EXIT = { x: 1, y: 3, w: 2, h: 2 };
+
+        let currentLevelIndex = 0;
+        let currentBlocks = [];
+        let isIceSlideMode = false;
+        let moveCount = 0;
+        let gameTimer = null;
+        let elapsedSeconds = 0;
+        let selectedBlockId = null;
+        let isGameWon = false;
+
+        let currentDragData = null;
+
+        const gridBgEl = document.getElementById('gridBackground');
+        const blocksContainerEl = document.getElementById('blocksContainer');
+        const lcdLevelEl = document.getElementById('lcdLevel');
+        const lcdMovesEl = document.getElementById('lcdMoves');
+        const lcdParMovesEl = document.getElementById('lcdParMoves');
+        const lcdTimerEl = document.getElementById('lcdTimer');
+        const lcdStatusTextEl = document.getElementById('lcdStatusText');
+        const lcdDiffEl = document.getElementById('lcdDiff');
+        const lcdBestMovesEl = document.getElementById('lcdBestMoves');
+        const modeBadgeText = document.getElementById('modeText');
+        const slideModeLabel = document.getElementById('slideModeLabel');
+
+        function initGridUI() {
+            gridBgEl.innerHTML = '';
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'bg-slate-300/60 rounded-xl border border-slate-400/30 w-full h-full';
+                    gridBgEl.appendChild(cell);
+                }
+            }
+
+            const targetEl = document.createElement('div');
+            targetEl.className = 'target-zone absolute rounded-2xl flex items-center justify-center font-tech font-bold text-amber-600/40 text-xs tracking-widest';
+            targetEl.style.left = `${(TARGET_EXIT.x / GRID_COLS) * 100}%`;
+            targetEl.style.top = `${(TARGET_EXIT.y / GRID_ROWS) * 100}%`;
+            targetEl.style.width = `${(TARGET_EXIT.w / GRID_COLS) * 100}%`;
+            targetEl.style.height = `${(TARGET_EXIT.h / GRID_ROWS) * 100}%`;
+            targetEl.innerHTML = '<i class="fa-solid fa-flag-checkered text-xl sm:text-2xl"></i>';
+            gridBgEl.appendChild(targetEl);
+        }
+
+        function loadLevel(levelData) {
+            currentBlocks = JSON.parse(JSON.stringify(levelData.blocks));
+            isIceSlideMode = levelData.mode === 'ice';
+            moveCount = 0;
+            elapsedSeconds = 0;
+            selectedBlockId = null;
+            isGameWon = false;
+
+            lcdLevelEl.textContent = String(levelData.id).padStart(2, '0');
+            lcdMovesEl.textContent = '0';
+            lcdParMovesEl.textContent = `/${levelData.parMoves}`;
+            lcdDiffEl.textContent = levelData.difficulty;
+            modeBadgeText.textContent = isIceSlideMode ? 'Ice Slide' : 'Klotski';
+            slideModeLabel.textContent = isIceSlideMode ? 'ICE' : 'STEP';
+
+            const bestData = userProgress.levelData[levelData.id];
+            lcdBestMovesEl.textContent = bestData ? `BEST: ${bestData.bestMoves} m` : 'BEST: --';
+            renderStarsDisplay(bestData ? bestData.stars : 0);
+
+            updateTimerDisplay();
+            startTimer();
+
+            lcdStatusTextEl.textContent = 'SLIDE TO EXIT';
+            renderBlocks();
+        }
+
+        function renderStarsDisplay(starCount) {
+            const starsContainer = document.getElementById('lcdStars');
+            starsContainer.innerHTML = '';
+            for (let i = 1; i <= 3; i++) {
+                const star = document.createElement('i');
+                star.className = i <= starCount ? 'fa-solid fa-star' : 'fa-regular fa-star';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        function renderBlocks() {
+            blocksContainerEl.innerHTML = '';
+
+            currentBlocks.forEach(block => {
+                const blockEl = document.createElement('div');
+                
+                let colorClass = 'block-dark';
+                if (block.isHero) {
+                    colorClass = 'block-hero';
+                } else if (block.w === 1 && block.h === 1) {
+                    colorClass = 'block-lime';
+                }
+
+                const isSelected = selectedBlockId === block.id;
+                const selectBorder = isSelected ? 'ring-4 ring-cyan-400 scale-[0.98]' : '';
+
+                blockEl.className = `game-block absolute rounded-2xl p-1 flex flex-col items-center justify-center font-bold text-center cursor-pointer pointer-events-auto ${colorClass} ${selectBorder}`;
+                
+                blockEl.style.left = `${(block.x / GRID_COLS) * 100}%`;
+                blockEl.style.top = `${(block.y / GRID_ROWS) * 100}%`;
+                blockEl.style.width = `${(block.w / GRID_COLS) * 100}%`;
+                blockEl.style.height = `${(block.h / GRID_ROWS) * 100}%`;
+
+                if (block.isHero) {
+                    blockEl.innerHTML = `
+                        <div class="w-6 h-6 rounded-full bg-amber-950/20 flex items-center justify-center text-amber-900 text-sm mb-0.5">
+                            <i class="fa-solid fa-face-smile"></i>
+                        </div>
+                        <span class="text-[8px] tracking-wider uppercase font-tech font-bold opacity-80">SWIFT</span>
+                    `;
+                } else {
+                    blockEl.innerHTML = `<span class="text-[9px] opacity-40 font-tech"><i class="fa-solid fa-microchip"></i></span>`;
+                }
+
+                blockEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectedBlockId = block.id;
+                    audio.playClick();
+                    renderBlocks();
+                });
+
+                blockEl.addEventListener('touchstart', (e) => handleTouchStart(e, block), { passive: false });
+                blockEl.addEventListener('touchmove', (e) => handleTouchMove(e), { passive: false });
+                blockEl.addEventListener('touchend', (e) => handleTouchEnd(e), { passive: false });
+                blockEl.addEventListener('mousedown', (e) => handleMouseDown(e, block));
+
+                blocksContainerEl.appendChild(blockEl);
+            });
+        }
+
+        function isValidPosition(x, y, w, h) {
+            return x >= 0 && y >= 0 && (x + w) <= GRID_COLS && (y + h) <= GRID_ROWS;
+        }
+
+        function isOverlapping(b1, b2) {
+            return !(b1.x + b1.w <= b2.x || b2.x + b2.w <= b1.x || b1.y + b1.h <= b2.y || b2.y + b2.h <= b1.y);
+        }
+
+        function moveBlock(blockId, dx, dy, forceToEdge = false) {
+            if (isGameWon) return false;
+
+            const block = currentBlocks.find(b => b.id === blockId);
+            if (!block) return false;
+
+            let targetX = block.x;
+            let targetY = block.y;
+            let moved = false;
+
+            if (isIceSlideMode || forceToEdge) {
+                while (true) {
+                    const nextX = targetX + dx;
+                    const nextY = targetY + dy;
+                    if (!isValidPosition(nextX, nextY, block.w, block.h)) break;
+
+                    const tempBlock = { ...block, x: nextX, y: nextY };
+                    const hasCollision = currentBlocks.some(other => other.id !== block.id && isOverlapping(tempBlock, other));
+                    if (hasCollision) break;
+
+                    targetX = nextX;
+                    targetY = nextY;
+                    moved = true;
+                }
+            } else {
+                const nextX = targetX + dx;
+                const nextY = targetY + dy;
+
+                if (isValidPosition(nextX, nextY, block.w, block.h)) {
+                    const tempBlock = { ...block, x: nextX, y: nextY };
+                    const hasCollision = currentBlocks.some(other => other.id !== block.id && isOverlapping(tempBlock, other));
+                    
+                    if (!hasCollision) {
+                        targetX = nextX;
+                        targetY = nextY;
+                        moved = true;
+                    }
+                }
+            }
+
+            if (moved) {
+                block.x = targetX;
+                block.y = targetY;
+                moveCount++;
+                lcdMovesEl.textContent = moveCount;
+                audio.playSlide();
+                renderBlocks();
+                checkWinCondition();
+                saveLocalProgress();
+                return true;
+            }
+
+            return false;
+        }
+
+        function handleTouchStart(e, block) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            initDrag(block, touch.clientX, touch.clientY);
+        }
+
+        function handleTouchMove(e) {
+            if (!currentDragData) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            updateDrag(touch.clientX, touch.clientY);
+        }
+
+        function handleTouchEnd(e) {
+            if (!currentDragData) return;
+            e.preventDefault();
+            endDrag();
+        }
+
+        function handleMouseDown(e, block) {
+            e.preventDefault();
+            initDrag(block, e.clientX, e.clientY);
+
+            const handleMouseMove = (me) => {
+                if (!currentDragData) return;
+                updateDrag(me.clientX, me.clientY);
+            };
+
+            const handleMouseUp = () => {
+                endDrag();
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            };
+
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        function initDrag(block, startX, startY) {
+            selectedBlockId = block.id;
+            
+            const rect = blocksContainerEl.getBoundingClientRect();
+            const cellWidth = rect.width / GRID_COLS;
+            const cellHeight = rect.height / GRID_ROWS;
+
+            const blockIndex = currentBlocks.findIndex(b => b.id === block.id);
+            const blockEl = blocksContainerEl.children[blockIndex];
+
+            if (blockEl) {
+                blockEl.style.transition = 'none';
+            }
+
+            currentDragData = {
+                block,
+                blockEl,
+                startX,
+                startY,
+                originalX: block.x,
+                originalY: block.y,
+                cellWidth,
+                cellHeight,
+                currentGridX: block.x,
+                currentGridY: block.y
+            };
+
+            renderBlocks();
+        }
+
+        function updateDrag(clientX, clientY) {
+            if (!currentDragData) return;
+
+            const { block, blockEl, startX, startY, originalX, originalY, cellWidth, cellHeight } = currentDragData;
+
+            const deltaX = clientY !== startY && Math.abs(clientX - startX) > Math.abs(clientY - startY) ? clientX - startX : 0;
+            const deltaY = clientX !== startX && Math.abs(clientY - startY) >= Math.abs(clientX - startX) ? clientY - startY : 0;
+
+            // Maximum allowed grid movement
+            const maxStepsX = 4;
+            const maxStepsY = 5;
+
+            // If user drags past 1.5 grid distances, trigger edge slide behavior
+            const rawShiftX = deltaX / cellWidth;
+            const rawShiftY = deltaY / cellHeight;
+
+            let shiftX = Math.round(rawShiftX);
+            let shiftY = Math.round(rawShiftY);
+
+            if (!isIceSlideMode) {
+                if (Math.abs(rawShiftX) > 1.5) shiftX = Math.sign(rawShiftX) * maxStepsX;
+                if (Math.abs(rawShiftY) > 1.5) shiftY = Math.sign(rawShiftY) * maxStepsY;
+            }
+
+            shiftX = Math.max(-maxStepsX, Math.min(maxStepsX, shiftX));
+            shiftY = Math.max(-maxStepsY, Math.min(maxStepsY, shiftY));
+
+            let targetX = originalX;
+            let targetY = originalY;
+
+            if (shiftX !== 0) {
+                const step = Math.sign(shiftX);
+                for (let i = 1; i <= Math.abs(shiftX); i++) {
+                    const nextX = originalX + i * step;
+                    if (isValidPosition(nextX, originalY, block.w, block.h)) {
+                        const temp = { ...block, x: nextX, y: originalY };
+                        if (!currentBlocks.some(other => other.id !== block.id && isOverlapping(temp, other))) {
+                            targetX = nextX;
+                        } else break;
+                    } else break;
+                }
+            } else if (shiftY !== 0) {
+                const step = Math.sign(shiftY);
+                for (let i = 1; i <= Math.abs(shiftY); i++) {
+                    const nextY = originalY + i * step;
+                    if (isValidPosition(originalX, nextY, block.w, block.h)) {
+                        const temp = { ...block, x: originalX, y: nextY };
+                        if (!currentBlocks.some(other => other.id !== block.id && isOverlapping(temp, other))) {
+                            targetY = nextY;
+                        } else break;
+                    } else break;
+                }
+            }
+
+            currentDragData.currentGridX = targetX;
+            currentDragData.currentGridY = targetY;
+
+            if (blockEl) {
+                const visualLeft = (originalX + (deltaX / cellWidth)) * 100 / GRID_COLS;
+                const visualTop = (originalY + (deltaY / cellHeight)) * 100 / GRID_ROWS;
+
+                const maxLeft = ((GRID_COLS - block.w) / GRID_COLS) * 100;
+                const maxTop = ((GRID_ROWS - block.h) / GRID_ROWS) * 100;
+
+                blockEl.style.left = `${Math.max(0, Math.min(maxLeft, visualLeft))}%`;
+                blockEl.style.top = `${Math.max(0, Math.min(maxTop, visualTop))}%`;
+            }
+        }
+
+        function endDrag() {
+            if (!currentDragData) return;
+
+            const { block, blockEl, originalX, originalY, currentGridX, currentGridY } = currentDragData;
+
+            if (blockEl) {
+                blockEl.style.transition = '';
+            }
+
+            const moved = currentGridX !== originalX || currentGridY !== originalY;
+
+            if (moved) {
+                block.x = currentGridX;
+                block.y = currentGridY;
+                moveCount++;
+                lcdMovesEl.textContent = moveCount;
+                audio.playSlide();
+                checkWinCondition();
+                saveLocalProgress();
+            }
+
+            currentDragData = null;
+            renderBlocks();
+        }
+
+        function calculateHint() {
+            const hero = currentBlocks.find(b => b.isHero);
+            if (!hero) return;
+
+            if (hero.x < TARGET_EXIT.x) {
+                lcdStatusTextEl.textContent = 'HINT: Move Hero RIGHT';
+                selectedBlockId = hero.id;
+            } else if (hero.x > TARGET_EXIT.x) {
+                lcdStatusTextEl.textContent = 'HINT: Move Hero LEFT';
+                selectedBlockId = hero.id;
+            } else if (hero.y < TARGET_EXIT.y) {
+                lcdStatusTextEl.textContent = 'HINT: Clear path DOWN';
+            } else {
+                lcdStatusTextEl.textContent = 'HINT: Slide directly to exit!';
+            }
+            renderBlocks();
+        }
+
+        function checkWinCondition() {
+            const heroBlock = currentBlocks.find(b => b.isHero);
+            if (heroBlock && heroBlock.x === TARGET_EXIT.x && heroBlock.y === TARGET_EXIT.y) {
+                isGameWon = true;
+                stopTimer();
+                audio.playWin();
+
+                const currentLvl = PRESET_LEVELS[currentLevelIndex];
+                let earnedStars = 1;
+                if (moveCount <= currentLvl.parMoves) earnedStars = 3;
+                else if (moveCount <= currentLvl.parMoves * 1.5) earnedStars = 2;
+
+                const lvlId = currentLvl.id;
+                const prev = userProgress.levelData[lvlId] || { bestMoves: 999, stars: 0 };
+                
+                userProgress.levelData[lvlId] = {
+                    stars: Math.max(prev.stars, earnedStars),
+                    bestMoves: Math.min(prev.bestMoves, moveCount),
+                    bestTime: Math.min(prev.bestTime || 999, elapsedSeconds)
+                };
+
+                const nextLvlId = currentLvl.id + 1;
+                if (nextLvlId <= 50 && !userProgress.unlockedLevels.includes(nextLvlId)) {
+                    userProgress.unlockedLevels.push(nextLvlId);
+                }
+
+                saveLocalProgress();
+
+                const winStarsContainer = document.getElementById('winStars');
+                winStarsContainer.innerHTML = '';
+                for (let i = 1; i <= 3; i++) {
+                    const star = document.createElement('i');
+                    star.className = i <= earnedStars ? 'fa-solid fa-star' : 'fa-regular fa-star text-slate-600';
+                    winStarsContainer.appendChild(star);
+                }
+
+                document.getElementById('winStageSubtitle').textContent = `Stage ${currentLvl.id} Cleared in ${moveCount} moves!`;
+                document.getElementById('winMoves').textContent = moveCount;
+                document.getElementById('winTime').textContent = lcdTimerEl.textContent;
+                document.getElementById('winModal').classList.remove('hidden');
+            }
+        }
+
+        function startTimer() {
+            stopTimer();
+            gameTimer = setInterval(() => {
+                elapsedSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (gameTimer) clearInterval(gameTimer);
+        }
+
+        function updateTimerDisplay() {
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+            lcdTimerEl.textContent = `${mins}:${secs}`;
+        }
+
+        function updateUIForProgress() {
+            const currentLvl = PRESET_LEVELS[currentLevelIndex];
+            const bestData = userProgress.levelData[currentLvl.id];
+            lcdBestMovesEl.textContent = bestData ? `BEST: ${bestData.bestMoves} m` : 'BEST: --';
+            renderStarsDisplay(bestData ? bestData.stars : 0);
+        }
+
+        const levelModal = document.getElementById('levelModal');
+        const levelsGrid = document.getElementById('levelsGrid');
+        let currentTabFilter = 'all';
+
+        function renderLevelMenu() {
+            levelsGrid.innerHTML = '';
+            PRESET_LEVELS.forEach((lvl, idx) => {
+                if (currentTabFilter === 'easy' && (lvl.id < 1 || lvl.id > 10)) return;
+                if (currentTabFilter === 'medium' && (lvl.id < 11 || lvl.id > 25)) return;
+                if (currentTabFilter === 'hard' && (lvl.id < 26 || lvl.id > 40)) return;
+                if (currentTabFilter === 'expert' && (lvl.id < 41 || lvl.id > 50)) return;
+
+                const isUnlocked = userProgress.unlockedLevels.includes(lvl.id);
+                const btn = document.createElement('button');
+                btn.disabled = !isUnlocked;
+                
+                let bgState = isUnlocked ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700' : 'bg-slate-900/50 text-slate-600 border-slate-800 opacity-50';
+                if (idx === currentLevelIndex) bgState = 'bg-lime-500 text-slate-950 border-white font-bold';
+
+                const starsData = userProgress.levelData[lvl.id]?.stars || 0;
+
+                btn.className = `p-1.5 rounded-xl flex flex-col items-center justify-center font-bold text-xs border transition min-h-[48px] ${bgState}`;
+                btn.innerHTML = `
+                    <span class="font-lcd text-xs">${lvl.id}</span>
+                    <div class="flex gap-0.5 text-[7px] text-amber-400">
+                        <i class="${starsData >= 1 ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                        <i class="${starsData >= 2 ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                        <i class="${starsData >= 3 ? 'fa-solid' : 'fa-regular'} fa-star"></i>
+                    </div>
+                `;
+                btn.addEventListener('click', () => {
+                    if (!isUnlocked) return;
+                    currentLevelIndex = idx;
+                    loadLevel(PRESET_LEVELS[currentLevelIndex]);
+                    levelModal.classList.add('hidden');
+                });
+                levelsGrid.appendChild(btn);
+            });
+        }
+
+        document.querySelectorAll('.level-tab-btn').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.level-tab-btn').forEach(t => {
+                    t.className = 'level-tab-btn flex-1 py-1 rounded-lg text-slate-400 hover:text-white';
+                });
+                e.target.className = 'level-tab-btn flex-1 py-1 rounded-lg bg-lime-500 text-slate-950';
+                currentTabFilter = e.target.getAttribute('data-range');
+                renderLevelMenu();
+            });
+        });
+
+        document.getElementById('btnLevels').addEventListener('click', () => {
+            audio.playClick();
+            renderLevelMenu();
+            levelModal.classList.remove('hidden');
+        });
+
+        document.getElementById('btnCloseLevels').addEventListener('click', () => levelModal.classList.add('hidden'));
+
+        document.getElementById('btnHint').addEventListener('click', () => {
+            audio.playClick();
+            calculateHint();
+        });
+
+        document.getElementById('dpadUp').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', 0, -1));
+        document.getElementById('dpadDown').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', 0, 1));
+        document.getElementById('dpadLeft').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', -1, 0));
+        document.getElementById('dpadRight').addEventListener('click', () => moveBlock(selectedBlockId || 'hero', 1, 0));
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'w') moveBlock(selectedBlockId || 'hero', 0, -1);
+            if (e.key === 'ArrowDown' || e.key === 's') moveBlock(selectedBlockId || 'hero', 0, 1);
+            if (e.key === 'ArrowLeft' || e.key === 'a') moveBlock(selectedBlockId || 'hero', -1, 0);
+            if (e.key === 'ArrowRight' || e.key === 'd') moveBlock(selectedBlockId || 'hero', 1, 0);
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => {
+            audio.playClick();
+            loadLevel(PRESET_LEVELS[currentLevelIndex]);
+        });
+
+        document.getElementById('btnModeToggle').addEventListener('click', () => {
+            audio.playClick();
+            isIceSlideMode = !isIceSlideMode;
+            modeBadgeText.textContent = isIceSlideMode ? 'Ice Slide' : 'Klotski';
+            slideModeLabel.textContent = isIceSlideMode ? 'ICE' : 'STEP';
+        });
+
+        document.getElementById('btnNextLevel').addEventListener('click', () => {
+            document.getElementById('winModal').classList.add('hidden');
+            currentLevelIndex = (currentLevelIndex + 1) % PRESET_LEVELS.length;
+            loadLevel(PRESET_LEVELS[currentLevelIndex]);
+        });
+
+        document.getElementById('btnSaveData').addEventListener('click', () => {
+            audio.playClick();
+            document.getElementById('saveModal').classList.remove('hidden');
+        });
+
+        document.getElementById('btnCloseSaveModal').addEventListener('click', () => document.getElementById('saveModal').classList.add('hidden'));
+        document.getElementById('btnCloseSaveManager').addEventListener('click', () => document.getElementById('saveModal').classList.add('hidden'));
+
+        document.getElementById('btnExportJSON').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(userProgress, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `swiftblock_save.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        document.getElementById('btnImportJSON').addEventListener('click', () => document.getElementById('fileInputJSON').click());
+        document.getElementById('fileInputJSON').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const imported = JSON.parse(event.target.result);
+                        if (imported.unlockedLevels) {
+                            userProgress = imported;
+                            saveLocalProgress();
+                            updateUIForProgress();
+                            document.getElementById('saveModal').classList.add('hidden');
+                        }
+                    } catch(err) { console.error(err); }
+                };
+                reader.readAsText(e.target.files[0]);
+            }
+        });
+
+        document.getElementById('btnResetProgress').addEventListener('click', () => {
+            userProgress = { unlockedLevels: [1], levelData: {}, settings: { soundEnabled: true } };
+            saveLocalProgress();
+            loadLevel(PRESET_LEVELS[0]);
+            document.getElementById('saveModal').classList.add('hidden');
+        });
+
+        window.onload = function() {
+            initGridUI();
+            loadLocalProgress();
+            initAuthAndFirestore();
+            loadLevel(PRESET_LEVELS[0]);
+        };
+    </script>
+</body>
+</html>
